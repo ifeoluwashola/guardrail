@@ -2,54 +2,58 @@
 
 Guardrail is a context-aware CLI tool written in Go that safely manages environment switching across various clusters and cloud accounts. Its core feature is a **Safety Interceptor** that halts execution when running high-risk commands (like `delete`, `uninstall`, or `destroy`) against a production environment, demanding explicit user confirmation.
 
+**🌐 Full Documentation & Usage Guide:** [https://guardrail-website.vercel.app/](https://guardrail-website.vercel.app/)
+
 ## The Conflict with `gr`
 
-*Note: Some shell plugins (like Oh-My-Zsh git plugins) heavily alias `gr` to `git remote`. To avoid fatal git repository errors, the CLI binary is explicitly named `guardrail`.*
+*Note: Some shell plugins (like Oh-My-Zsh git plugins) heavily alias `gr` to `git remote`. To avoid fatal git repository errors, the CLI binary is explicitly named `guardrail`. However, you can alias it locally.*
 
 ---
 
 ## 🚀 Installation
 
-Ensure you have Go installed (1.24+). To install the CLI globally to your `$GOPATH/bin`:
+Guardrail natively supports seamless distribution via GoReleaser across all major package managers.
+
+### macOS / Linux (Homebrew)
 
 ```bash
-make install
-# or
-go install github.com/ifeoluwashola/guardrail/...
+brew tap ifeoluwashola/homebrew-tap
+brew install guardrail
 ```
 
-> **Troubleshooting: `command not found`**  
-> If you get `command not found: guardrail`, it means Go's bin directory isn't in your system's `PATH`. Run this command to add it to your profile:
->
-> ```bash
-> echo 'export PATH=$PATH:$(go env GOPATH)/bin' >> ~/.zshrc && source ~/.zshrc
-> ```
-
-Verify the installation:
+### Debian / Ubuntu (APT)
 
 ```bash
-guardrail --help
+curl -LO https://github.com/ifeoluwashola/guardrail/releases/latest/download/guardrail_Linux_x86_64.deb
+sudo dpkg -i guardrail_Linux_x86_64.deb
+```
+
+### Windows (Scoop)
+
+```powershell
+scoop bucket add guardrail https://github.com/ifeoluwashola/scoop-bucket.git
+scoop install guardrail
+```
+
+### Compile From Source (Requires Go 1.24+)
+
+```bash
+go install github.com/ifeoluwashola/guardrail@latest
 ```
 
 ---
 
 ## ⚙️ Configuration (`~/.guardrail/config.yaml`)
 
-Guardrail is entirely config-driven. On first run, it looks for `~/.guardrail/config.yaml` in your local home directory. This file dictates your cloud and cluster contexts.
-
-**Sample `~/.guardrail/config.yaml`:**
+Guardrail is entirely config-driven. On first run, it looks for `~/.guardrail/config.yaml`. Provide definitions for your cloud and cluster contexts.
 
 ```yaml
 environments:
   dev:
-    cloud_profile: "aws-dev"
     kubernetes_context: "arn:aws:eks:us-east-1:123456789012:cluster/dev-cluster"
-    terraform_workspace: "dev"
     is_production: false
   prod:
-    cloud_profile: "aws-prod"
     kubernetes_context: "arn:aws:eks:us-east-1:123456789012:cluster/prod-cluster"
-    terraform_workspace: "prod"
     is_production: true
 ```
 
@@ -57,83 +61,35 @@ environments:
 
 ## 🛠️ List of Commands & Usage
 
-### 1. Context Switching (`guardrail use`)
+Guardrail features interactive configuration wizards, meaning you never actually have to touch the YAML file manually!
 
-Changes Guardrail's internal active context and executes shell integrations depending on the environment.
+### 1. Initialization & Configuration
 
-**Usage:**
+* **`guardrail create-config`** (alias: `cc`): Scaffolds the initial base config.
+* **`guardrail set-context`** (alias: `sc`): Interactive terminal dropdown UI to add or modify environments.
+* **`guardrail edit-config`**: Falls back to your local `$EDITOR` for manual YAML tuning.
 
-```bash
-guardrail use dev
-guardrail use prod
-```
+### 2. Environment Management
 
-*Note: If `is_production: true` is set, `use` will flash a bright red terminal warning letting you know you are now targeting production infrastructure.*
+* **`guardrail list-contexts`** (alias: `lc`): Prints all environments configured in your YAML, brilliantly highlighting your *Active* selection and explicitly flagging any [PROD] environments.
+* **`guardrail use [env_name]`**: Switches the internal state to the requested cluster target.
 
-### 2. The Command Interceptor (`guardrail run -- <command>`)
+### 3. Execution & Safety Interceptor
 
-This is the core safety engine. It wraps any command and executes it within the currently active environment. If the active environment is marked as **production**, it scans the command for high-risk keywords (`delete`, `apply`, `destroy`, `uninstall`).
-
-If a risk is detected, it freezes the pipeline and requires manual exact-string validation of the target cluster.
-
-**Safe Execution Passes Through:**
+The core safety engine. Wrap your command with `guardrail run` to execute beneath the active profile.
 
 ```bash
-guardrail run -- kubectl get pods
+guardrail run -- kubectl delete pods --all
 ```
 
-**Dangerous Execution is Trapped:**
+If your active context has `is_production: true`, it physically halts execution for any destructive keyword (`delete`, `apply`, `destroy`) and demands the exact cluster string to proceed. **Zero accidental production drops.**
 
-```bash
-guardrail run -- kubectl delete deployment api-server
-# DANGER: You are targeting PRODUCTION.
-# ✔ Type the exact cluster context name ('arn:aws:eks...:cluster/prod-cluster') to confirm: 
-```
+### 4. Shell Profile Interfacing
 
-### 3. Shell Profile Exporting (`guardrail env`)
+* **`guardrail env`**: Prints out the bash `export` statements required to inject the context into your local shell.
+* **`guardrail prompt`**: Renders a highly-visible badge (e.g. `[PROD | my-cluster]`), built perfectly for custom Zsh or Starship themes!
 
-A Go child-process cannot natively modify the `export` tree of your parent bash/zsh shell. To propagate environment variables seamlessly, evaluate the `env` command directly in your shell.
-
-**Usage:**
-
-```bash
-eval $(guardrail env)
-```
-
-**Pro-Tip:** Add an alias to your `~/.bashrc` or `~/.zshrc` to automatically wrap the context execution!
-
-```bash
-alias gr-use='guardrail use $1 && eval $(guardrail env)'
-
-# Now you can just type:
-# gr-use dev
-```
-
-### 4. Custom PS1 Prompt (`guardrail prompt`)
-
-Want to know exactly what environment you are operating in at all times? Insert Guardrail natively into your shell prompt layout.
-
-**Usage:**
-
-```bash
-guardrail prompt
-# outputs: [PROD | prod-cluster] (colored red)
-```
-
-**Pro-Tip (Zsh/Bash integration):**
-Add this to your `~/.zshrc` profile:
-
-```bash
-export PS1="\$(guardrail prompt) \u@\h:\w$ "
-```
-
-### 5. Interactive Configuration (`guardrail set-context`)
-
-Guardrail provides a suite of interactive commands so you never have to manually write YAML configs. **Pro-Tip: We've added short aliases like `sc` or `e` to save keystrokes!**
-
-* `guardrail create-config` (aliases: `create`, `c`, `cc`): Interactively scaffolds your very first `~/.guardrail/config.yaml` using terminal prompts.
-* `guardrail set-context` (aliases: `set`, `s`, `sc`): Spawns a CLI GUI dropdown to select an environment, allowing you to interactively override the `cloud_provider`, `cloud_profile`, K8s context, and production tags!
-* `guardrail edit-config` (aliases: `edit`, `e`, `ec`): Opens your `~/.guardrail/config.yaml` dynamically in your host's `$EDITOR` (e.g. `vim`, `nano`).
+**👉 For deep dives into Starship (`ps1`) integration instructions or Shell Aliasing, please visit the [Official Documentation](https://guardrail-website.vercel.app/).**
 
 ---
 
