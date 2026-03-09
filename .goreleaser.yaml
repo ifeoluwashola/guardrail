@@ -35,9 +35,9 @@ snapshot:
 
 nfpms:
   - id: guardrail
-    vendor: Ifeoluwa Shola
+    vendor: Ifeoluwashola Adaralegbe
     homepage: https://github.com/ifeoluwashola/guardrail
-    maintainer: Ifeoluwa Shola <your_email@example.com>
+    maintainer: Ifeoluwashola Adaralegbe <[EMAIL_ADDRESS]>
     description: Context-aware Go CLI designed to safely manage environment switching and prevent accidental production command execution.
     license: MIT
     formats:
