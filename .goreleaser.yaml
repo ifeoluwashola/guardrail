@@ -1,3 +1,5 @@
+version: 2
+
 before:
   hooks:
     - go mod tidy
@@ -15,7 +17,8 @@ builds:
       - arm64
 
 archives:
-  - format: tar.gz
+  - formats:
+      - tar.gz
     name_template: >-
       {{ .ProjectName }}_
       {{- title .Os }}_
@@ -25,19 +28,20 @@ archives:
       {{- if .Arm }}v{{ .Arm }}{{ end }}
     format_overrides:
       - goos: windows
-        format: zip
+        formats:
+          - zip
 
 checksum:
   name_template: "checksums.txt"
 
 snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  version_template: "{{ incpatch .Version }}-next"
 
 nfpms:
   - id: guardrail
     vendor: Ifeoluwashola Adaralegbe
     homepage: https://github.com/ifeoluwashola/guardrail
-    maintainer: Ifeoluwashola Adaralegbe <[EMAIL_ADDRESS]>
+    maintainer: Ifeoluwashola Adaralegbe ifeoluwa.devops@gmail.com
     description: Context-aware Go CLI designed to safely manage environment switching and prevent accidental production command execution.
     license: MIT
     formats:
@@ -46,18 +50,16 @@ nfpms:
       - apk
     bindir: /usr/bin
 
-brews:
+homebrew_casks:
   - name: guardrail
     repository:
       owner: ifeoluwashola
       name: homebrew-tap
       token: "{{ .Env.GITHUB_TOKEN }}"
-    directory: Formula
+    directory: Casks
     homepage: https://github.com/ifeoluwashola/guardrail
     description: Context-aware CLI preventing accidental production commands.
     license: MIT
-    test: |
-      system "#{bin}/guardrail --help"
 
 scoops:
   - repository:

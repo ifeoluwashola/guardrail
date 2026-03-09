@@ -2,9 +2,9 @@ name: goreleaser
 
 on:
     push:
-        # Run only on new version tags
+        # Run only on semantic version tags (e.g., v1.0.0)
         tags:
-            - "*"
+            - "v*"
 
 permissions:
     contents: write
@@ -30,7 +30,8 @@ jobs:
               uses: goreleaser/goreleaser-action@v6
               with:
                   distribution: goreleaser
-                  version: latest
+                  # Lock to v2 to clear the "using 'latest' as default version" warning
+                  version: "~> v2"
                   args: release --clean
               env:
                   GITHUB_TOKEN: ${{ secrets.GORELEASER_PAT }}
