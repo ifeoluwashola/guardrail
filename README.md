@@ -145,3 +145,9 @@ Guardrail uses standard Go tables for testing the safety interceptors.
 make build   # builds local binary
 make test    # runs cmd/run_test.go
 ```
+
+---
+
+## 📄 License
+
+This project is open-source and licensed under the [MIT License](LICENSE). Feel free to fork, modify, and distribute it!
