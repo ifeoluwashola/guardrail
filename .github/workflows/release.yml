@@ -1,0 +1,36 @@
+name: goreleaser
+
+on:
+    push:
+        # Run only on new version tags
+        tags:
+            - "*"
+
+permissions:
+    contents: write
+
+jobs:
+    goreleaser:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Set up Go
+              uses: actions/setup-go@v5
+              with:
+                  go-version: stable
+
+            # GoReleaser needs a GitHub Personal Access Token to push to your other
+            # customized Homebrew and Scoop repositories. Standard secrets.GITHUB_TOKEN
+            # only has access to the *current* repository.
+            - name: Run GoReleaser
+              uses: goreleaser/goreleaser-action@v6
+              with:
+                  distribution: goreleaser
+                  version: latest
+                  args: release --clean
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GORELEASER_PAT }}
